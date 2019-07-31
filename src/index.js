@@ -5,7 +5,7 @@ const routeUser = require('./routes/user');
 const routeTask = require('./routes/task');
 
 const app = express();
-const port = process.env.APP_PORT;
+const port = process.env.PORT;
 
 // app.use((req, res, next) => {
 //   res.status(503).send('Server undergoing maintenance - check back later');
