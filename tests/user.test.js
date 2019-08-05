@@ -2,10 +2,9 @@
 const request = require('supertest');
 const app = require('../src/app');
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
+const goose = require('mongoose');
 const User = require('../src/models/user');
-
-const fakeID = new mongoose.Types.ObjectId();
+const SECRET = process.env.APP_JWT_SECRET;
 
 describe('New Users', () => {
   const fakeUser = {
@@ -65,5 +64,60 @@ describe('Login', () => {
         password: fakeUser.password
       })
       .expect(400);
+  });
+});
+
+describe('authenticated', () => {
+  const fakeID = new goose.Types.ObjectId();
+  console.log(fakeID, SECRET);
+  const fakeUser = {
+    _id: fakeID,
+    name: 'fake user',
+    email: 'fake@example.com',
+    password: '123secret!!',
+    tokens: [{
+      token: jwt.sign({ _id: fakeID }, SECRET)
+    }]
+  };
+  beforeAll(async () => {
+    await User.deleteMany();
+    await new User(fakeUser).save();
+  });
+  describe('Get Profile', () => {
+    it('should get profile for user', async () => {
+      await request(app)
+        .get('/users/me')
+        .set('Authorization', `Bearer ${fakeUser.tokens[0].token}`)
+        .send()
+        .expect(200);
+    });
+    it('should not get profile of non-auth user', async () => {
+      await request(app)
+        .get('/users/me')
+        .send()
+        .expect(401);
+    });
+    it('should not get profile for bogus bearer token', async () => {
+      await request(app)
+        .get('/users/me')
+        .set('Authorization', `Bearer fake_token`)
+        .send()
+        .expect(401);
+    });
+  });
+  describe('Delete user', () => {
+    it('should remove auth user', async () => {
+      await request(app)
+        .delete('/users/me')
+        .set('Authorization', `Bearer ${fakeUser.tokens[0].token}`)
+        .send()
+        .expect(200);
+    });
+    it('should not remove non-auth user', async () => {
+      await request(app)
+        .delete('/users/me')
+        .send()
+        .expect(401);
+    });
   });
 });
